@@ -1,0 +1,3161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Story Engine</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            --bg-dark: #0f0f1a;
+            --bg-panel: #1a1a2e;
+            --bg-card: #252540;
+            --accent: #e94560;
+            --accent-hover: #ff6b6b;
+            --text: #eaeaea;
+            --text-muted: #888;
+            --border: #333;
+            --success: #4ade80;
+            --player-bg: #16213e;
+            --warning: #fbbf24;
+            --typing: #4ade80;
+            --system-msg: #4a5568;
+            --disabled: #555;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text);
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .top-bar {
+            height: 50px;
+            background: var(--bg-panel);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+        }
+
+        .mode-switch { display: flex; gap: 10px; }
+
+        .mode-btn {
+            padding: 8px 20px;
+            border: none;
+            background: var(--bg-card);
+            color: var(--text);
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .mode-btn.active { background: var(--accent); }
+
+        .top-actions { display: flex; gap: 10px; }
+
+        .top-actions.hidden { display: none; }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-secondary { background: var(--bg-card); color: var(--text); border: 1px solid var(--border); }
+        .btn-small { padding: 4px 10px; font-size: 11px; }
+        .btn-danger { background: #ff4444; color: white; }
+
+        .main-container {
+            display: flex;
+            height: calc(100vh - 50px);
+        }
+
+        .sidebar-left {
+            width: 280px;
+            background: var(--bg-panel);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 15px;
+            border-bottom: 1px solid var(--border);
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .node-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .node-item {
+            padding: 12px;
+            background: var(--bg-card);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            position: relative;
+        }
+
+        .node-item:hover, .node-item.active {
+            border-color: var(--accent);
+        }
+
+        .node-item.start-node {
+            border-left: 4px solid var(--success);
+        }
+
+        .node-actions {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .node-item:hover .node-actions {
+            opacity: 1;
+        }
+
+        .node-name { font-weight: 600; margin-bottom: 4px; padding-right: 20px; }
+        .node-meta {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .center-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-dark);
+        }
+
+        .node-header {
+            padding: 20px;
+            background: var(--bg-panel);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .node-header-row {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .node-title-section {
+            flex: 1;
+        }
+
+        .node-title-input {
+            background: transparent;
+            border: none;
+            color: var(--text);
+            font-size: 24px;
+            font-weight: 700;
+            width: 100%;
+            outline: none;
+            border-bottom: 2px solid transparent;
+        }
+
+        .node-title-input:focus { border-bottom-color: var(--accent); }
+
+        .node-subtitle {
+            color: var(--text-muted);
+            font-size: 13px;
+            margin-top: 5px;
+        }
+
+        .participants-row {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            padding-top: 15px;
+            border-top: 1px solid var(--border);
+        }
+
+        .participant-select {
+            flex: 1;
+        }
+
+        .conversation-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .message-list {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .message-block {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            position: relative;
+            align-items: flex-start;
+        }
+
+        .message-block.player {
+            flex-direction: row-reverse;
+        }
+
+        .message-block.system {
+            justify-content: center;
+        }
+
+        .message-block.chat-bg-change {
+            justify-content: center;
+            opacity: 0.7;
+        }
+
+        .message-block.conditional {
+            opacity: 0.6;
+            border: 1px dashed var(--accent);
+            border-radius: 12px;
+            padding: 10px;
+        }
+
+        .message-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--bg-card);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+
+        .message-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .message-content {
+            flex: 1;
+            max-width: 70%;
+        }
+
+        .message-block.system .message-content,
+        .message-block.chat-bg-change .message-content {
+            max-width: 90%;
+        }
+
+        .message-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 4px;
+            flex-wrap: wrap;
+        }
+
+        .message-block.system .message-header,
+        .message-block.chat-bg-change .message-header {
+            justify-content: center;
+        }
+
+        .message-author {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--accent);
+        }
+
+        .message-block.system .message-author,
+        .message-block.chat-bg-change .message-author {
+            color: var(--text-muted);
+        }
+
+        .character-toggle {
+            display: flex;
+            background: var(--bg-panel);
+            border-radius: 20px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        .character-toggle-btn {
+            padding: 6px 16px;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .character-toggle-btn.active {
+            background: var(--accent);
+            color: white;
+        }
+
+        .conditional-badge {
+            background: rgba(251, 191, 36, 0.2);
+            color: var(--warning);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+        }
+
+        .message-bubble {
+            background: var(--bg-card);
+            padding: 12px 16px;
+            border-radius: 12px;
+            border-bottom-left-radius: 4px;
+        }
+
+        .message-block.player .message-bubble {
+            background: var(--accent);
+            border-bottom-left-radius: 12px;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message-block.system .message-bubble {
+            background: var(--system-msg);
+            border-radius: 12px;
+            text-align: center;
+            font-style: italic;
+        }
+
+        .message-block.chat-bg-change .message-bubble {
+            background: rgba(233, 69, 96, 0.2);
+            border: 1px dashed var(--accent);
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .message-image {
+            max-width: 100%;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            display: block;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .message-image:hover {
+            transform: scale(1.02);
+        }
+
+        .message-textarea {
+            width: 100%;
+            background: transparent;
+            border: none;
+            color: var(--text);
+            font-family: inherit;
+            font-size: 14px;
+            line-height: 1.5;
+            resize: none;
+            outline: none;
+            min-height: 20px;
+        }
+
+        .message-actions {
+            display: flex;
+            gap: 5px;
+            margin-top: 8px;
+            opacity: 0;
+            transition: opacity 0.2s;
+            flex-wrap: wrap;
+        }
+
+        .message-block:hover .message-actions {
+            opacity: 1;
+        }
+
+        .message-action-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 12px;
+            padding: 2px 6px;
+        }
+
+        .message-action-btn:hover { color: var(--accent); }
+        .delete-btn { color: #ff4444; }
+        .delete-btn:hover { color: #ff6666; }
+
+        .add-message-bar {
+            display: flex;
+            gap: 10px;
+            padding: 15px;
+            background: var(--bg-panel);
+            border-radius: 12px;
+            margin: 20px 0;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .add-message-btn {
+            flex: 1;
+            padding: 10px;
+            background: var(--bg-card);
+            border: 2px dashed var(--border);
+            border-radius: 8px;
+            color: var(--text-muted);
+            cursor: pointer;
+            text-align: center;
+            min-width: 90px;
+            font-size: 12px;
+        }
+
+        .add-message-btn:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .keyboard-hint {
+            width: 100%;
+            font-size: 11px;
+            color: var(--text-muted);
+            text-align: center;
+            margin-top: 5px;
+        }
+
+        .choice-block {
+            background: var(--bg-card);
+            border: 2px solid var(--accent);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .choice-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        .choice-option {
+            background: var(--bg-panel);
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .choice-text-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--text);
+            font-size: 14px;
+            outline: none;
+        }
+
+        .choice-target {
+            width: 180px;
+            padding: 6px;
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: 4px;
+        }
+
+        .ending-section {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 30px;
+        }
+
+        .ending-header {
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: var(--success);
+        }
+
+        .ending-type-select {
+            width: 100%;
+            padding: 10px;
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+
+        .sidebar-right {
+            width: 300px;
+            background: var(--bg-panel);
+            border-left: 1px solid var(--border);
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .panel-section { margin-bottom: 25px; }
+
+        .panel-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .character-list { display: flex; flex-direction: column; gap: 8px; }
+
+        .character-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: var(--bg-card);
+            border-radius: 8px;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .character-item:hover { background: #333; }
+
+        .char-avatar-small {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--bg-panel);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            overflow: hidden;
+        }
+
+        .char-avatar-small img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .char-info { flex: 1; }
+
+        .char-name { font-size: 13px; font-weight: 600; }
+
+        .char-path {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-family: monospace;
+        }
+
+        .char-actions {
+            display: flex;
+            gap: 5px;
+        }
+
+        .form-group { margin-bottom: 15px; }
+
+        .form-label {
+            display: block;
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .form-input, .form-select {
+            width: 100%;
+            padding: 8px 12px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: 6px;
+            font-size: 13px;
+        }
+
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .checkbox-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .checkbox-row input[type="checkbox"] {
+            cursor: pointer;
+        }
+
+        /* Node Background Image Input */
+        .node-background-input {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-left: 15px;
+        }
+
+        .node-background-input input {
+            width: 200px;
+            padding: 6px 10px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        /* PLAYER MODE */
+        .player-container {
+            display: none;
+            height: 100vh;
+            background: var(--bg-dark);
+            background-size: cover;
+            background-position: center;
+        }
+
+        /* Splash Screen */
+        .splash-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--bg-dark);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            background-size: cover;
+            background-position: center;
+        }
+
+        .splash-content {
+            background: rgba(26, 26, 46, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 60px;
+            border-radius: 20px;
+            max-width: 600px;
+            text-align: center;
+            border: 1px solid var(--border);
+        }
+
+        .splash-photo {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            margin: 0 auto 30px;
+            background: var(--bg-card);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 60px;
+            overflow: hidden;
+            border: 3px solid var(--accent);
+        }
+
+        .splash-photo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .splash-title {
+            font-size: 42px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: var(--text);
+        }
+
+        .splash-description {
+            font-size: 16px;
+            color: var(--text-muted);
+            line-height: 1.6;
+            margin-bottom: 40px;
+        }
+
+        .splash-start-btn {
+            padding: 15px 50px;
+            font-size: 18px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .splash-start-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(233, 69, 96, 0.3);
+        }
+
+        /* Conversations Menu */
+        .conversations-menu {
+            width: 100%;
+            max-width: 430px;
+            height: 100%;
+            max-height: 900px;
+            background: var(--player-bg);
+            margin: 0 auto;
+            padding: 0;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+            border-radius: 30px;
+            overflow: hidden;
+        }
+
+        .menu-header {
+            padding: 20px;
+            background: var(--bg-panel);
+            border-bottom: 1px solid var(--border);
+            text-align: center;
+        }
+
+        .menu-title {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .menu-subtitle {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .conversations-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .conversation-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px;
+            background: var(--bg-card);
+            border-radius: 12px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+        }
+
+        .conversation-item:hover {
+            border-color: var(--accent);
+            transform: translateX(5px);
+        }
+
+        .conversation-item.active {
+            border-color: var(--accent);
+            background: rgba(233, 69, 96, 0.1);
+        }
+
+        .conversation-item.locked {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .conversation-item.locked:hover {
+            border-color: transparent;
+            transform: none;
+        }
+
+        .conversation-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: var(--bg-panel);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .conversation-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .conversation-info {
+            flex: 1;
+        }
+
+        .conversation-name {
+            font-weight: 600;
+            font-size: 16px;
+            margin-bottom: 4px;
+        }
+
+        .conversation-preview {
+            font-size: 13px;
+            color: var(--text-muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .conversation-status {
+            font-size: 12px;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-weight: 600;
+        }
+
+        .conversation-status.new {
+            background: var(--accent);
+            color: white;
+        }
+
+        .conversation-status.completed {
+            background: var(--success);
+            color: black;
+        }
+
+        .conversation-status.locked {
+            background: var(--bg-panel);
+            color: var(--text-muted);
+        }
+
+        .phone-frame {
+            width: 100%;
+            max-width: 430px;
+            height: 100%;
+            max-height: 900px;
+            background: #000;
+            margin: 0 auto;
+            padding: 12px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .phone-screen {
+            flex: 1;
+            background: var(--player-bg);
+            border-radius: 30px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            background-size: cover;
+            background-position: center;
+        }
+
+        .chat-header {
+            padding: 15px 20px;
+            background: rgba(26, 26, 46, 0.95);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            backdrop-filter: blur(10px);
+        }
+
+        .chat-header-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--bg-dark);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            overflow: hidden;
+        }
+
+        .chat-header-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .chat-header-info { flex: 1; }
+
+        .chat-header-name { font-weight: 600; }
+
+        .chat-header-status {
+            font-size: 13px;
+            color: var(--success);
+        }
+
+        .back-btn {
+            background: transparent;
+            border: none;
+            color: var(--text);
+            font-size: 20px;
+            cursor: pointer;
+            padding: 5px 10px;
+        }
+
+        .delay-toggle {
+            background: transparent;
+            border: none;
+            color: var(--text);
+            font-size: 18px;
+            cursor: pointer;
+            padding: 5px 10px;
+            opacity: 1;
+            transition: opacity 0.2s;
+        }
+
+        .delay-toggle.disabled {
+            opacity: 0.4;
+            color: var(--disabled);
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            background: rgba(22, 33, 62, 0.85);
+        }
+
+        .chat-message {
+            max-width: 75%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            font-size: 14px;
+            line-height: 1.4;
+            animation: messageIn 0.3s ease;
+        }
+
+        .chat-message img {
+            max-width: 100%;
+            border-radius: 8px;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        @keyframes messageIn {
+            from { opacity: 0; transform: translateY(10px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .chat-message.received {
+            align-self: flex-start;
+            background: var(--bg-card);
+            color: var(--text);
+            border-bottom-left-radius: 4px;
+        }
+
+        .chat-message.sent {
+            align-self: flex-end;
+            background: var(--accent);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .chat-message.system {
+            align-self: center;
+            background: var(--system-msg);
+            color: var(--text);
+            border-radius: 12px;
+            font-style: italic;
+            font-size: 13px;
+            text-align: center;
+            max-width: 90%;
+        }
+
+        /* Typing Indicator */
+        .typing-indicator {
+            align-self: flex-start;
+            background: var(--bg-card);
+            padding: 16px 20px;
+            border-radius: 18px;
+            border-bottom-left-radius: 4px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-bottom: 12px;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--text-muted);
+            border-radius: 50%;
+            animation: typingBounce 1.4s infinite ease-in-out both;
+        }
+
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes typingBounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+
+        /* Chat Input Area */
+        .chat-input-container {
+            padding: 15px 20px;
+            background: rgba(26, 26, 46, 0.95);
+            border-top: 1px solid var(--border);
+            backdrop-filter: blur(10px);
+        }
+
+        .choices-container {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .choice-btn {
+            padding: 12px 16px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: 20px;
+            cursor: pointer;
+            text-align: left;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .choice-btn:hover {
+            background: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .text-input-wrapper {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .text-input {
+            flex: 1;
+            padding: 12px 16px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            color: var(--text-muted);
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
+            text-align: center;
+        }
+
+        .text-input:hover {
+            border-color: var(--accent);
+            color: var(--text);
+        }
+
+        .text-input.active {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+
+        .text-input.sending {
+            animation: pulseSend 0.3s ease;
+        }
+
+        @keyframes pulseSend {
+            0% { transform: scale(1); }
+            50% { transform: scale(0.95); }
+            100% { transform: scale(1); }
+        }
+
+        .chat-ended {
+            text-align: center;
+            color: var(--text-muted);
+            padding: 20px;
+            font-style: italic;
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--text-muted);
+            text-align: center;
+            padding: 40px;
+        }
+
+        .empty-state-icon { font-size: 48px; margin-bottom: 15px; }
+
+        .load-story-btn {
+            margin-top: 20px;
+            padding: 15px 30px;
+            font-size: 16px;
+        }
+
+        /* Image Lightbox */
+        .image-lightbox {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            cursor: zoom-out;
+        }
+
+        .image-lightbox.active {
+            display: flex;
+        }
+
+        .lightbox-image {
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain;
+            border-radius: 8px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        }
+
+        .lightbox-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: white;
+            font-size: 30px;
+            cursor: pointer;
+            background: rgba(0,0,0,0.5);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Modals */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.active { display: flex; }
+
+        .modal {
+            background: var(--bg-panel);
+            border-radius: 12px;
+            padding: 25px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .modal-footer {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+
+        /* Splash Editor */
+        .splash-editor {
+            background: var(--bg-card);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-dark); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #444; }
+
+        .variable-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(233, 69, 96, 0.2);
+            color: var(--accent);
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: monospace;
+        }
+
+        .image-hint {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .saved-indicator {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--success);
+            color: black;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+
+        .saved-indicator.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="saved-indicator" id="savedIndicator">Saved</div>
+
+    <!-- Image Lightbox -->
+    <div class="image-lightbox" id="imageLightbox" onclick="closeImageLightbox()">
+        <div class="lightbox-close">×</div>
+        <img class="lightbox-image" id="lightboxImage" src="" alt="Full size image">
+    </div>
+
+    <!-- TOP BAR -->
+    <div class="top-bar">
+        <div class="mode-switch">
+            <button class="mode-btn active" onclick="switchMode('editor')" id="editorTab">Editor</button>
+            <button class="mode-btn" onclick="switchMode('player')" id="playerTab">Play</button>
+        </div>
+        <div class="top-actions" id="topActions">
+            <button class="btn btn-secondary" onclick="newStory()">New Story</button>
+            <button class="btn btn-secondary" onclick="exportStory()">Export JSON</button>
+            <button class="btn btn-secondary" onclick="importStory()">Import JSON</button>
+            <button class="btn btn-primary" onclick="createNewNode()">+ New Node</button>
+        </div>
+    </div>
+
+    <!-- EDITOR MODE -->
+    <div class="main-container" id="editorMode">
+        <div class="sidebar-left">
+            <div class="sidebar-header">
+                <span>Story Nodes</span>
+                <span id="nodeCount" style="color: var(--text-muted); font-size: 12px;">0</span>
+            </div>
+            <div class="node-list" id="nodeList">
+                <div class="empty-state">
+                    <div class="empty-state-icon">📭</div>
+                    <p>No nodes yet. Create your first node!</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="center-panel">
+            <div id="emptyState" class="empty-state">
+                <div class="empty-state-icon">📝</div>
+                <h3>No Node Selected</h3>
+                <p>Create a new node or select one from the sidebar</p>
+            </div>
+
+            <div id="nodeEditor" style="display: none; flex-direction: column; height: 100%;">
+                <div class="node-header">
+                    <div class="node-header-row">
+                        <div class="node-title-section">
+                            <input type="text" class="node-title-input" id="nodeTitleInput" placeholder="Node Name" onchange="updateCurrentNode()">
+                            <div class="node-subtitle">
+                                <span id="nodeIdDisplay"></span> | 
+                                <label style="cursor: pointer;">
+                                    <input type="checkbox" id="startNodeCheck" onchange="setAsStartNode()"> Start Node
+                                </label>
+                            </div>
+                        </div>
+                        <div class="node-background-input">
+                            <label style="font-size: 12px; color: var(--text-muted);">Void BG:</label>
+                            <input type="text" id="nodeBackgroundInput" placeholder="assets/void-bg.jpg" onchange="updateNodeBackground()" title="Background for area outside phone">
+                        </div>
+                        <button class="btn btn-danger" onclick="deleteCurrentNode()">Delete Node</button>
+                    </div>
+                    
+                    <div class="participants-row">
+                        <div class="participant-select">
+                            <label class="form-label">This conversation is between:</label>
+                            <div class="character-toggle" id="participantToggle">
+                                <!-- Populated by JS -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="conversation-area">
+                    <div class="message-list" id="messageList"></div>
+
+                    <div class="add-message-bar">
+                        <div class="add-message-btn" onclick="addMessage()">+ Add Message</div>
+                        <div class="add-message-btn" onclick="addImageMessage()">+ Add Image</div>
+                        <div class="add-message-btn" onclick="addSystemMessage()">+ Add Sys Msg</div>
+                        <div class="add-message-btn" onclick="addChatBgChange()">+ Set Chat BG</div>
+                        <div class="add-message-btn" onclick="addVariableSet()">+ Set Variable</div>
+                        <div class="keyboard-hint">
+                            Enter = New message (same person) | Shift+Enter = New line | Ctrl+Enter = Switch speaker
+                        </div>
+                    </div>
+
+                    <div class="ending-section">
+                        <div class="ending-header">What happens after this conversation?</div>
+                        <select class="ending-type-select" id="endingType" onchange="updateEndingType()">
+                            <option value="choices">Player Chooses (Branching)</option>
+                            <option value="redirect">Continue to Another Node</option>
+                            <option value="end">End of Story</option>
+                        </select>
+                        
+                        <div id="endingChoices">
+                            <div id="choicesList"></div>
+                            <button class="btn btn-secondary btn-small" onclick="addChoice()">+ Add Choice</button>
+                        </div>
+
+                        <div id="endingRedirect" style="display: none;">
+                            <label class="form-label">Continue to:</label>
+                            <select class="form-input" id="redirectTarget" onchange="handleRedirectChange()">
+                                <option value="">Select node...</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="sidebar-right">
+            <!-- Splash Editor -->
+            <div class="panel-section">
+                <div class="panel-title">Story Splash Page</div>
+                <div class="splash-editor">
+                    <div class="form-group">
+                        <label class="form-label">Story Title</label>
+                        <input type="text" class="form-input" id="splashTitle" placeholder="My Amazing Story" onchange="updateSplash()">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-input" id="splashDescription" rows="3" placeholder="Enter story description..." onchange="updateSplash()"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Photo (optional)</label>
+                        <input type="text" class="form-input" id="splashPhoto" placeholder="assets/cover.png" onchange="updateSplash()">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Background Image (optional)</label>
+                        <input type="text" class="form-input" id="splashBackground" placeholder="assets/bg.jpg" onchange="updateSplash()">
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <div class="panel-title">Characters</div>
+                <div class="character-list" id="characterList"></div>
+                <button class="btn btn-secondary btn-small" style="width: 100%; margin-top: 10px;" onclick="openCharacterModal()">+ Add Character</button>
+            </div>
+
+            <div class="panel-section">
+                <div class="panel-title">Story Variables</div>
+                <div id="variableList" style="font-size: 12px; color: var(--text-muted);">
+                    No variables set
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <div class="panel-title">Image Assets</div>
+                <div style="font-size: 12px; color: var(--text-muted); line-height: 1.5;">
+                    Place images in an <code>assets/</code> folder.<br>
+                    Reference as: <code>assets/image.png</code>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PLAYER MODE -->
+    <div class="player-container" id="playerMode">
+        <!-- Player content loaded dynamically -->
+    </div>
+
+    <!-- Character Modal -->
+    <div class="modal-overlay" id="characterModal">
+        <div class="modal">
+            <div class="modal-header" id="charModalTitle">Add New Character</div>
+            <input type="hidden" id="editCharId">
+            <div class="form-group">
+                <label class="form-label">Character Name</label>
+                <input type="text" class="form-input" id="newCharName" placeholder="e.g., Alex">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Avatar Image Path</label>
+                <input type="text" class="form-input" id="newCharAvatar" placeholder="assets/alex.png">
+                <div class="image-hint">Place image in assets/ folder, enter path like "assets/alex.png"</div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Chat Background Image (optional)</label>
+                <input type="text" class="form-input" id="newCharBackground" placeholder="assets/chat-bg.jpg">
+                <div class="image-hint">Background shown behind this character's chat</div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeCharacterModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveCharacter()">Save Character</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Image Modal -->
+    <div class="modal-overlay" id="imageModal">
+        <div class="modal">
+            <div class="modal-header">Add Image to Message</div>
+            <div class="form-group">
+                <label class="form-label">Image Path</label>
+                <input type="text" class="form-input" id="imagePath" placeholder="assets/image.png">
+                <div class="image-hint">Enter path to image in assets folder</div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Caption (optional)</label>
+                <input type="text" class="form-input" id="imageCaption" placeholder="Enter caption...">
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeImageModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="insertImageMessage()">Add Image</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chat BG Change Modal -->
+    <div class="modal-overlay" id="chatBgModal">
+        <div class="modal">
+            <div class="modal-header">Change Chat Background</div>
+            <div class="form-group">
+                <label class="form-label">Background Image Path</label>
+                <input type="text" class="form-input" id="chatBgPath" placeholder="assets/chat-bg.jpg">
+                <div class="image-hint">Enter path to background image (hidden from player)</div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeChatBgModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="insertChatBgChange()">Add Background Change</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Condition Modal -->
+    <div class="modal-overlay" id="conditionModal">
+        <div class="modal">
+            <div class="modal-header">Message Condition</div>
+            <div class="form-group">
+                <label class="form-label">Only show this message if:</label>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <select class="form-select" id="conditionVariable" style="flex: 1;">
+                        <option value="">Select variable...</option>
+                    </select>
+                    <select class="form-select" id="conditionOperator" style="width: 100px;">
+                        <option value="==">equals</option>
+                        <option value="!=">not equals</option>
+                        <option value=">">greater than</option>
+                        <option value="<">less than</option>
+                    </select>
+                    <input type="text" class="form-input" id="conditionValue" placeholder="value" style="flex: 1;">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="clearCondition()">Clear Condition</button>
+                <button class="btn btn-primary" onclick="saveCondition()">Save Condition</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+const STORAGE_KEY = 'story_engine_data';
+
+let storyData = {
+    title: 'Untitled Story',
+    splash: {
+        title: '',
+        description: '',
+        photo: '',
+        backgroundImage: ''
+    },
+    characters: {
+        'player': { 
+            id: 'player',
+            name: 'You', 
+            avatar: '',
+            backgroundImage: '',
+            isPlayer: true 
+        }
+    },
+    nodes: {},
+    variables: {},
+    startNodeId: null
+};
+
+let currentNodeId = null;
+let currentMessageIdx = null;
+let playState = null;
+let loadedPlayStory = null;
+
+// Player conversation state
+let conversationState = {
+    currentNodeId: null,
+    messageQueue: [],
+    currentMessageIndex: 0,
+    isTyping: false,
+    waitingForUser: false,
+    variables: {},
+    unlockedNodes: new Set(),
+    completedNodes: new Set(),
+    currentParticipantId: null,
+    participantHistory: {},
+    activeParticipantNodes: {},
+    pendingChoiceNode: null,
+    currentVoidBackground: null,
+    currentChatBackground: null,
+    delayEnabled: true
+};
+
+function init() {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+        try {
+            storyData = JSON.parse(saved);
+            if (!storyData.splash) {
+                storyData.splash = { title: '', description: '', photo: '', backgroundImage: '' };
+            }
+            Object.values(storyData.characters).forEach(char => {
+                if (!char.backgroundImage) char.backgroundImage = '';
+            });
+            Object.values(storyData.nodes).forEach(node => {
+                if (!node.voidBackground) node.voidBackground = '';
+            });
+        } catch (e) {
+            console.error('Failed to load saved data');
+        }
+    }
+    
+    renderNodeList();
+    renderCharacterList();
+    updateVariableList();
+    renderSplashEditor();
+    
+    window.addEventListener('beforeunload', saveToStorage);
+    
+    switchMode('player');
+}
+
+function saveToStorage() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(storyData));
+    showSavedIndicator();
+}
+
+function showSavedIndicator() {
+    const indicator = document.getElementById('savedIndicator');
+    indicator.classList.add('show');
+    setTimeout(() => indicator.classList.remove('show'), 2000);
+}
+
+setInterval(saveToStorage, 30000);
+
+function renderSplashEditor() {
+    document.getElementById('splashTitle').value = storyData.splash.title || '';
+    document.getElementById('splashDescription').value = storyData.splash.description || '';
+    document.getElementById('splashPhoto').value = storyData.splash.photo || '';
+    document.getElementById('splashBackground').value = storyData.splash.backgroundImage || '';
+}
+
+function updateSplash() {
+    storyData.splash.title = document.getElementById('splashTitle').value;
+    storyData.splash.description = document.getElementById('splashDescription').value;
+    storyData.splash.photo = document.getElementById('splashPhoto').value;
+    storyData.splash.backgroundImage = document.getElementById('splashBackground').value;
+    saveToStorage();
+}
+
+function createNewNode() {
+    const id = 'node_' + Date.now();
+    
+    let npcId = null;
+    const npc = Object.entries(storyData.characters).find(([id, c]) => !c.isPlayer && id !== 'player');
+    if (npc) npcId = npc[0];
+    
+    const node = {
+        id: id,
+        name: 'New Node',
+        participantId: npcId,
+        voidBackground: '',
+        messages: [],
+        ending: {
+            type: 'choices',
+            choices: []
+        },
+        variableSets: []
+    };
+    
+    storyData.nodes[id] = node;
+    
+    if (!storyData.startNodeId) {
+        storyData.startNodeId = id;
+    }
+    
+    saveToStorage();
+    renderNodeList();
+    selectNode(id);
+}
+
+function selectNode(id) {
+    currentNodeId = id;
+    renderNodeList();
+    renderNodeEditor();
+}
+
+function deleteCurrentNode() {
+    if (!currentNodeId) return;
+    if (!confirm('Delete this node? This cannot be undone.')) return;
+    
+    delete storyData.nodes[currentNodeId];
+    
+    Object.values(storyData.nodes).forEach(node => {
+        if (node.ending.type === 'choices') {
+            node.ending.choices = node.ending.choices.filter(c => c.nextNodeId !== currentNodeId);
+        }
+        if (node.ending.target === currentNodeId) {
+            node.ending.target = null;
+        }
+    });
+    
+    if (storyData.startNodeId === currentNodeId) {
+        const remaining = Object.keys(storyData.nodes);
+        storyData.startNodeId = remaining.length > 0 ? remaining[0] : null;
+    }
+    
+    currentNodeId = null;
+    saveToStorage();
+    renderNodeList();
+    renderNodeEditor();
+}
+
+function deleteNode(id) {
+    if (!confirm('Delete this node?')) return;
+    
+    delete storyData.nodes[id];
+    
+    Object.values(storyData.nodes).forEach(node => {
+        if (node.ending.type === 'choices') {
+            node.ending.choices = node.ending.choices.filter(c => c.nextNodeId !== id);
+        }
+        if (node.ending.target === id) {
+            node.ending.target = null;
+        }
+    });
+    
+    if (storyData.startNodeId === id) {
+        const remaining = Object.keys(storyData.nodes);
+        storyData.startNodeId = remaining.length > 0 ? remaining[0] : null;
+    }
+    
+    if (currentNodeId === id) {
+        currentNodeId = null;
+    }
+    
+    saveToStorage();
+    renderNodeList();
+    renderNodeEditor();
+}
+
+function renderNodeList() {
+    const list = document.getElementById('nodeList');
+    const nodes = Object.values(storyData.nodes);
+    
+    document.getElementById('nodeCount').textContent = nodes.length;
+    
+    if (nodes.length === 0) {
+        list.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-state-icon">📭</div>
+                <p>No nodes yet. Create your first node!</p>
+            </div>
+        `;
+        return;
+    }
+    
+    list.innerHTML = nodes.map(node => {
+        const participant = node.participantId ? storyData.characters[node.participantId] : null;
+        const participantName = participant ? participant.name : 'Unknown';
+        
+        return `
+            <div class="node-item ${node.id === currentNodeId ? 'active' : ''} ${node.id === storyData.startNodeId ? 'start-node' : ''}" 
+                 onclick="selectNode('${node.id}')">
+                <div class="node-actions">
+                    <button class="btn btn-danger btn-small" onclick="event.stopPropagation(); deleteNode('${node.id}')">×</button>
+                </div>
+                <div class="node-name">${escapeHtml(node.name)}</div>
+                <div class="node-meta">
+                    Talking to: ${escapeHtml(participantName)} • ${node.messages.length} messages
+                    ${node.id === storyData.startNodeId ? ' • START' : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function newStory() {
+    if (!confirm('Create new story? All unsaved progress will be lost.')) return;
+    
+    storyData = {
+        title: 'Untitled Story',
+        splash: {
+            title: '',
+            description: '',
+            photo: '',
+            backgroundImage: ''
+        },
+        characters: {
+            'player': { 
+                id: 'player',
+                name: 'You', 
+                avatar: '',
+                backgroundImage: '',
+                isPlayer: true 
+            }
+        },
+        nodes: {},
+        variables: {},
+        startNodeId: null
+    };
+    
+    currentNodeId = null;
+    saveToStorage();
+    renderNodeList();
+    renderNodeEditor();
+    renderCharacterList();
+    updateVariableList();
+    renderSplashEditor();
+}
+
+function renderNodeEditor() {
+    if (!currentNodeId) {
+        document.getElementById('emptyState').style.display = 'flex';
+        document.getElementById('nodeEditor').style.display = 'none';
+        return;
+    }
+    
+    const node = storyData.nodes[currentNodeId];
+    
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('nodeEditor').style.display = 'flex';
+    
+    document.getElementById('nodeTitleInput').value = node.name;
+    document.getElementById('nodeIdDisplay').textContent = node.id;
+    document.getElementById('startNodeCheck').checked = node.id === storyData.startNodeId;
+    document.getElementById('nodeBackgroundInput').value = node.voidBackground || '';
+    
+    renderParticipantToggle();
+    renderMessages();
+    renderEnding();
+}
+
+function renderParticipantToggle() {
+    const node = storyData.nodes[currentNodeId];
+    const toggle = document.getElementById('participantToggle');
+    
+    const npcs = Object.entries(storyData.characters).filter(([id, c]) => !c.isPlayer && id !== 'player');
+    
+    if (npcs.length === 0) {
+        toggle.innerHTML = '<div style="color: var(--text-muted); padding: 8px;">No characters. Add one first.</div>';
+        return;
+    }
+    
+    toggle.innerHTML = npcs.map(([id, char]) => `
+        <button class="character-toggle-btn ${node.participantId === id ? 'active' : ''}" 
+                onclick="setParticipant('${id}')">
+            ${escapeHtml(char.name)}
+        </button>
+    `).join('');
+}
+
+function setParticipant(charId) {
+    const node = storyData.nodes[currentNodeId];
+    const oldParticipantId = node.participantId;
+    
+    node.participantId = charId;
+    
+    if (oldParticipantId) {
+        node.messages.forEach(msg => {
+            if (msg.characterId === oldParticipantId) {
+                msg.characterId = charId;
+            }
+        });
+    }
+    
+    saveToStorage();
+    renderParticipantToggle();
+    renderMessages();
+    renderNodeList();
+}
+
+function updateNodeBackground() {
+    const node = storyData.nodes[currentNodeId];
+    node.voidBackground = document.getElementById('nodeBackgroundInput').value;
+    saveToStorage();
+}
+
+function renderMessages() {
+    const node = storyData.nodes[currentNodeId];
+    const list = document.getElementById('messageList');
+    const participant = node.participantId ? storyData.characters[node.participantId] : null;
+    
+    if (node.messages.length === 0 && node.variableSets.length === 0) {
+        list.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 40px;">No messages yet. Click "+ Add Message" to start.</div>';
+        return;
+    }
+    
+    let html = '';
+    
+    node.messages.forEach((msg, idx) => {
+        const isPlayer = msg.characterId === 'player';
+        const isSystem = msg.isSystem;
+        const isChatBgChange = msg.isChatBgChange;
+        const char = isPlayer ? storyData.characters.player : (isSystem || isChatBgChange ? null : participant);
+        const hasCondition = msg.condition && msg.condition.variable;
+        
+        html += `
+            <div class="message-block ${isPlayer ? 'player' : ''} ${isSystem ? 'system' : ''} ${isChatBgChange ? 'chat-bg-change' : ''} ${hasCondition ? 'conditional' : ''}" data-index="${idx}">
+                ${!isSystem && !isChatBgChange ? `
+                <div class="message-avatar">
+                    ${char?.avatar ? `<img src="${char.avatar}" onerror="this.style.display='none'; this.parentElement.textContent='👤'">` : '👤'}
+                </div>
+                ` : ''}
+                <div class="message-content">
+                    <div class="message-header">
+                        <span class="message-author">${isSystem ? 'System' : isChatBgChange ? 'Chat BG' : escapeHtml(char?.name || 'Unknown')}</span>
+                        ${!isSystem && !isChatBgChange ? `
+                        <div class="character-toggle">
+                            <button class="character-toggle-btn ${isPlayer ? '' : 'active'}" 
+                                    onclick="toggleMessageCharacter(${idx})">NPC</button>
+                            <button class="character-toggle-btn ${isPlayer ? 'active' : ''}" 
+                                    onclick="toggleMessageCharacter(${idx})">You</button>
+                        </div>
+                        ` : ''}
+                        ${hasCondition ? `<span class="conditional-badge" onclick="editCondition(${idx})">IF ${escapeHtml(msg.condition.variable)}</span>` : ''}
+                        <button class="message-action-btn" onclick="editCondition(${idx})">
+                            ${hasCondition ? 'Edit Condition' : '+ Condition'}
+                        </button>
+                    </div>
+                    <div class="message-bubble">
+                        ${msg.image ? `<img src="${msg.image}" class="message-image" onerror="this.style.display='none'" onclick="openImageLightbox('${msg.image}')">` : ''}
+                        ${isChatBgChange ? `
+                            <div style="font-size: 12px; color: var(--accent);">🖼️ Change chat background to:</div>
+                            <div style="font-family: monospace; font-size: 11px;">${escapeHtml(msg.chatBgImage || 'none')}</div>
+                        ` : `
+                        <textarea class="message-textarea" 
+                                  data-index="${idx}"
+                                  onkeydown="handleMessageKeydown(event, ${idx})"
+                                  onchange="updateMessage(${idx}, this.value)"
+                                  oninput="autoResize(this)"
+                                  rows="1">${escapeHtml(msg.text || '')}</textarea>
+                        `}
+                    </div>
+                    <div class="message-actions">
+                        <button class="message-action-btn" onclick="moveMessage(${idx}, -1)">↑ Move Up</button>
+                        <button class="message-action-btn" onclick="moveMessage(${idx}, 1)">↓ Move Down</button>
+                        <button class="message-action-btn delete-btn" onclick="deleteMessage(${idx})">Delete</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    node.variableSets.forEach((vs, idx) => {
+        html += `
+            <div class="message-block" style="justify-content: center;">
+                <div class="variable-tag">
+                    SET ${escapeHtml(vs.variable)} = ${escapeHtml(vs.value)}
+                    <span class="delete-btn" style="cursor: pointer; margin-left: 8px;" onclick="deleteVariableSet(${idx})">×</span>
+                </div>
+            </div>
+        `;
+    });
+    
+    list.innerHTML = html;
+    
+    setTimeout(() => {
+        document.querySelectorAll('.message-textarea').forEach(ta => {
+            autoResize(ta);
+        });
+    }, 10);
+}
+
+function autoResize(textarea) {
+    textarea.style.height = 'auto';
+    textarea.style.height = textarea.scrollHeight + 'px';
+}
+
+function toggleMessageCharacter(idx) {
+    const node = storyData.nodes[currentNodeId];
+    const msg = node.messages[idx];
+    msg.characterId = msg.characterId === 'player' ? node.participantId : 'player';
+    saveToStorage();
+    renderMessages();
+}
+
+function handleMessageKeydown(event, idx) {
+    const node = storyData.nodes[currentNodeId];
+    const currentMsg = node.messages[idx];
+    
+    if (event.key === 'Enter' && !event.shiftKey && !event.ctrlKey && !event.metaKey) {
+        event.preventDefault();
+        saveCurrentMessageText(idx, event.target.value);
+        addMessageAfter(idx, currentMsg.characterId);
+    }
+    
+    if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+        event.preventDefault();
+        saveCurrentMessageText(idx, event.target.value);
+        
+        const otherCharId = currentMsg.characterId === 'player' ? node.participantId : 'player';
+        addMessageAfter(idx, otherCharId);
+    }
+}
+
+function saveCurrentMessageText(idx, text) {
+    storyData.nodes[currentNodeId].messages[idx].text = text;
+    saveToStorage();
+}
+
+function addMessageAfter(idx, charId) {
+    const node = storyData.nodes[currentNodeId];
+    
+    const newMsg = {
+        characterId: charId,
+        text: ''
+    };
+    
+    node.messages.splice(idx + 1, 0, newMsg);
+    
+    saveToStorage();
+    renderMessages();
+    
+    setTimeout(() => {
+        const textareas = document.querySelectorAll('.message-textarea');
+        for (let ta of textareas) {
+            if (parseInt(ta.dataset.index) === idx + 1) {
+                ta.focus();
+                break;
+            }
+        }
+    }, 10);
+}
+
+function addMessage() {
+    const node = storyData.nodes[currentNodeId];
+    const charId = node.participantId || 'player';
+    
+    node.messages.push({
+        characterId: charId,
+        text: ''
+    });
+    
+    saveToStorage();
+    renderMessages();
+    
+    setTimeout(() => {
+        const textareas = document.querySelectorAll('.message-textarea');
+        if (textareas.length > 0) textareas[textareas.length - 1].focus();
+    }, 10);
+}
+
+function addSystemMessage() {
+    const node = storyData.nodes[currentNodeId];
+    
+    node.messages.push({
+        characterId: 'system',
+        text: '',
+        isSystem: true
+    });
+    
+    saveToStorage();
+    renderMessages();
+    
+    setTimeout(() => {
+        const textareas = document.querySelectorAll('.message-textarea');
+        if (textareas.length > 0) textareas[textareas.length - 1].focus();
+    }, 10);
+}
+
+function addChatBgChange() {
+    document.getElementById('chatBgModal').classList.add('active');
+    document.getElementById('chatBgPath').value = '';
+}
+
+function closeChatBgModal() {
+    document.getElementById('chatBgModal').classList.remove('active');
+}
+
+function insertChatBgChange() {
+    const path = document.getElementById('chatBgPath').value.trim();
+    
+    const node = storyData.nodes[currentNodeId];
+    
+    node.messages.push({
+        characterId: 'system',
+        text: '',
+        isChatBgChange: true,
+        chatBgImage: path
+    });
+    
+    saveToStorage();
+    renderMessages();
+    closeChatBgModal();
+}
+
+function addImageMessage() {
+    document.getElementById('imageModal').classList.add('active');
+    document.getElementById('imagePath').value = '';
+    document.getElementById('imageCaption').value = '';
+}
+
+function closeImageModal() {
+    document.getElementById('imageModal').classList.remove('active');
+}
+
+function insertImageMessage() {
+    const path = document.getElementById('imagePath').value.trim();
+    const caption = document.getElementById('imageCaption').value.trim();
+    
+    if (!path) {
+        alert('Please enter an image path');
+        return;
+    }
+    
+    const node = storyData.nodes[currentNodeId];
+    const charId = node.participantId || 'player';
+    
+    node.messages.push({
+        characterId: charId,
+        text: caption,
+        image: path
+    });
+    
+    saveToStorage();
+    renderMessages();
+    closeImageModal();
+}
+
+function updateMessage(idx, text) {
+    storyData.nodes[currentNodeId].messages[idx].text = text;
+    saveToStorage();
+}
+
+function moveMessage(idx, dir) {
+    const node = storyData.nodes[currentNodeId];
+    const newIdx = idx + dir;
+    
+    if (newIdx < 0 || newIdx >= node.messages.length) return;
+    
+    const temp = node.messages[idx];
+    node.messages[idx] = node.messages[newIdx];
+    node.messages[newIdx] = temp;
+    
+    saveToStorage();
+    renderMessages();
+}
+
+function deleteMessage(idx) {
+    if (!confirm('Delete this message?')) return;
+    storyData.nodes[currentNodeId].messages.splice(idx, 1);
+    saveToStorage();
+    renderMessages();
+}
+
+function editCondition(idx) {
+    currentMessageIdx = idx;
+    const msg = storyData.nodes[currentNodeId].messages[idx];
+    
+    const varSelect = document.getElementById('conditionVariable');
+    const vars = Object.keys(storyData.variables);
+    
+    varSelect.innerHTML = '<option value="">Select variable...</option>' +
+        vars.map(v => `<option value="${v}">${v}</option>`).join('');
+    
+    if (msg.condition && msg.condition.variable) {
+        varSelect.value = msg.condition.variable;
+        document.getElementById('conditionOperator').value = msg.condition.operator || '==';
+        document.getElementById('conditionValue').value = msg.condition.value || '';
+    } else {
+        varSelect.value = '';
+        document.getElementById('conditionOperator').value = '==';
+        document.getElementById('conditionValue').value = '';
+    }
+    
+    document.getElementById('conditionModal').classList.add('active');
+}
+
+function saveCondition() {
+    const variable = document.getElementById('conditionVariable').value;
+    const operator = document.getElementById('conditionOperator').value;
+    const value = document.getElementById('conditionValue').value;
+    
+    if (!variable) {
+        alert('Please select a variable');
+        return;
+    }
+    
+    const msg = storyData.nodes[currentNodeId].messages[currentMessageIdx];
+    msg.condition = { variable, operator, value };
+    
+    saveToStorage();
+    renderMessages();
+    document.getElementById('conditionModal').classList.remove('active');
+}
+
+function clearCondition() {
+    const msg = storyData.nodes[currentNodeId].messages[currentMessageIdx];
+    delete msg.condition;
+    
+    saveToStorage();
+    renderMessages();
+    document.getElementById('conditionModal').classList.remove('active');
+}
+
+function checkCondition(condition, variables) {
+    if (!condition || !condition.variable) return true;
+    
+    const varValue = variables[condition.variable];
+    const checkValue = condition.value;
+    
+    switch (condition.operator) {
+        case '==': return String(varValue) === String(checkValue);
+        case '!=': return String(varValue) !== String(checkValue);
+        case '>': return parseFloat(varValue) > parseFloat(checkValue);
+        case '<': return parseFloat(varValue) < parseFloat(checkValue);
+        default: return String(varValue) === String(checkValue);
+    }
+}
+
+function addVariableSet() {
+    const name = prompt('Variable name (e.g., trust_level, has_key):');
+    if (!name) return;
+    
+    const value = prompt('Value (e.g., 10, true, yes):', 'true');
+    if (value === null) return;
+    
+    storyData.nodes[currentNodeId].variableSets.push({
+        variable: name,
+        value: value
+    });
+    
+    if (!storyData.variables[name]) {
+        storyData.variables[name] = value;
+    }
+    
+    saveToStorage();
+    renderMessages();
+    updateVariableList();
+}
+
+function deleteVariableSet(idx) {
+    storyData.nodes[currentNodeId].variableSets.splice(idx, 1);
+    saveToStorage();
+    renderMessages();
+}
+
+function renderEnding() {
+    const node = storyData.nodes[currentNodeId];
+    const ending = node.ending;
+    
+    document.getElementById('endingType').value = ending.type;
+    
+    const redirectSelect = document.getElementById('redirectTarget');
+    const otherNodes = Object.values(storyData.nodes).filter(n => n.id !== currentNodeId);
+    
+    redirectSelect.innerHTML = '<option value="">Select node...</option>' + 
+        otherNodes.map(n => `<option value="${n.id}" ${ending.target === n.id ? 'selected' : ''}>${escapeHtml(n.name)}</option>`).join('') +
+        '<option value="__CREATE_NEW__">+ Create New Node</option>';
+    
+    updateEndingType();
+    
+    if (ending.type === 'choices') {
+        const choicesList = document.getElementById('choicesList');
+        choicesList.innerHTML = (ending.choices || []).map((choice, idx) => `
+            <div class="choice-option">
+                <input type="text" class="choice-text-input" 
+                       value="${escapeHtml(choice.text)}" 
+                       placeholder="Choice text..."
+                       onchange="updateChoice(${idx}, 'text', this.value)">
+                <select class="choice-target" onchange="updateChoice(${idx}, 'target', this.value)">
+                    <option value="">Go to...</option>
+                    ${otherNodes.map(n => `<option value="${n.id}" ${choice.nextNodeId === n.id ? 'selected' : ''}>${escapeHtml(n.name)}</option>`).join('')}
+                    <option value="__CREATE_NEW__">+ Create New Node</option>
+                </select>
+                <button class="message-action-btn delete-btn" onclick="deleteChoice(${idx})">×</button>
+            </div>
+        `).join('');
+    }
+}
+
+function updateEndingType() {
+    const type = document.getElementById('endingType').value;
+    document.getElementById('endingChoices').style.display = type === 'choices' ? 'block' : 'none';
+    document.getElementById('endingRedirect').style.display = type === 'redirect' ? 'block' : 'none';
+    storyData.nodes[currentNodeId].ending.type = type;
+    saveToStorage();
+}
+
+function handleRedirectChange() {
+    const select = document.getElementById('redirectTarget');
+    const value = select.value;
+    
+    if (value === '__CREATE_NEW__') {
+        const name = prompt('Name for new node:');
+        if (name) {
+            const newId = createNodeFromName(name);
+            if (newId) {
+                storyData.nodes[currentNodeId].ending.target = newId;
+                saveToStorage();
+                renderEnding();
+                setTimeout(() => {
+                    select.value = newId;
+                }, 10);
+            }
+        } else {
+            select.value = storyData.nodes[currentNodeId].ending.target || '';
+        }
+    } else {
+        storyData.nodes[currentNodeId].ending.target = value;
+        saveToStorage();
+    }
+}
+
+function createNodeFromName(name) {
+    const id = 'node_' + Date.now();
+    const currentNode = storyData.nodes[currentNodeId];
+    
+    const node = {
+        id: id,
+        name: name,
+        participantId: currentNode.participantId,
+        voidBackground: '',
+        messages: [],
+        ending: {
+            type: 'choices',
+            choices: []
+        },
+        variableSets: []
+    };
+    
+    storyData.nodes[id] = node;
+    saveToStorage();
+    renderNodeList();
+    return id;
+}
+
+function addChoice() {
+    const node = storyData.nodes[currentNodeId];
+    if (!node.ending.choices) node.ending.choices = [];
+    node.ending.choices.push({ text: '', nextNodeId: '' });
+    saveToStorage();
+    renderEnding();
+}
+
+function updateChoice(idx, field, value) {
+    const choice = storyData.nodes[currentNodeId].ending.choices[idx];
+    
+    if (field === 'target' && value === '__CREATE_NEW__') {
+        const name = prompt('Name for new node:');
+        if (name) {
+            const newId = createNodeFromName(name);
+            if (newId) {
+                choice.nextNodeId = newId;
+                saveToStorage();
+                renderEnding();
+            }
+        }
+    } else {
+        if (field === 'text') choice.text = value;
+        if (field === 'target') choice.nextNodeId = value;
+        saveToStorage();
+    }
+}
+
+function deleteChoice(idx) {
+    storyData.nodes[currentNodeId].ending.choices.splice(idx, 1);
+    saveToStorage();
+    renderEnding();
+}
+
+function renderCharacterList() {
+    const list = document.getElementById('characterList');
+    
+    list.innerHTML = Object.entries(storyData.characters)
+        .filter(([id]) => id !== 'player')
+        .map(([id, char]) => `
+            <div class="character-item">
+                <div class="char-avatar-small">
+                    ${char.avatar ? `<img src="${char.avatar}" onerror="this.style.display='none'; this.parentElement.textContent='👤'">` : '👤'}
+                </div>
+                <div class="char-info">
+                    <div class="char-name">${escapeHtml(char.name)}</div>
+                    <div class="char-path">${escapeHtml(char.avatar || 'No image')}</div>
+                </div>
+                <div class="char-actions">
+                    <button class="btn btn-secondary btn-small" onclick="event.stopPropagation(); editCharacter('${id}')">Edit</button>
+                    <button class="btn btn-danger btn-small" onclick="event.stopPropagation(); deleteCharacter('${id}')">×</button>
+                </div>
+            </div>
+        `).join('') || '<div style="color: var(--text-muted); font-size: 12px;">No characters yet</div>';
+}
+
+function openCharacterModal() {
+    document.getElementById('characterModal').classList.add('active');
+    document.getElementById('charModalTitle').textContent = 'Add New Character';
+    document.getElementById('editCharId').value = '';
+    document.getElementById('newCharName').value = '';
+    document.getElementById('newCharAvatar').value = '';
+    document.getElementById('newCharBackground').value = '';
+}
+
+function editCharacter(id) {
+    const char = storyData.characters[id];
+    if (!char) return;
+    
+    document.getElementById('characterModal').classList.add('active');
+    document.getElementById('charModalTitle').textContent = 'Edit Character';
+    document.getElementById('editCharId').value = id;
+    document.getElementById('newCharName').value = char.name;
+    document.getElementById('newCharAvatar').value = char.avatar || '';
+    document.getElementById('newCharBackground').value = char.backgroundImage || '';
+}
+
+function closeCharacterModal() {
+    document.getElementById('characterModal').classList.remove('active');
+}
+
+function saveCharacter() {
+    const id = document.getElementById('editCharId').value;
+    const name = document.getElementById('newCharName').value.trim();
+    const avatar = document.getElementById('newCharAvatar').value.trim();
+    const background = document.getElementById('newCharBackground').value.trim();
+    
+    if (!name) {
+        alert('Please enter a character name');
+        return;
+    }
+    
+    if (id) {
+        storyData.characters[id].name = name;
+        storyData.characters[id].avatar = avatar;
+        storyData.characters[id].backgroundImage = background;
+    } else {
+        const newId = 'char_' + Date.now();
+        storyData.characters[newId] = {
+            id: newId,
+            name: name,
+            avatar: avatar,
+            backgroundImage: background,
+            isPlayer: false
+        };
+    }
+    
+    saveToStorage();
+    renderCharacterList();
+    closeCharacterModal();
+    
+    if (currentNodeId) {
+        renderParticipantToggle();
+        renderMessages();
+    }
+}
+
+function deleteCharacter(id) {
+    if (!confirm('Delete this character?')) return;
+    delete storyData.characters[id];
+    saveToStorage();
+    renderCharacterList();
+}
+
+function updateVariableList() {
+    const list = document.getElementById('variableList');
+    const vars = Object.entries(storyData.variables);
+    
+    if (vars.length === 0) {
+        list.innerHTML = 'No variables defined';
+        return;
+    }
+    
+    list.innerHTML = vars.map(([k, v]) => `
+        <div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid var(--border);">
+            <span style="font-family: monospace; color: var(--accent);">${escapeHtml(k)}</span>
+            <span>${escapeHtml(String(v))}</span>
+        </div>
+    `).join('');
+}
+
+function updateCurrentNode() {
+    if (!currentNodeId) return;
+    
+    const node = storyData.nodes[currentNodeId];
+    node.name = document.getElementById('nodeTitleInput').value || 'Unnamed Node';
+    
+    saveToStorage();
+    renderNodeList();
+}
+
+function setAsStartNode() {
+    if (document.getElementById('startNodeCheck').checked) {
+        storyData.startNodeId = currentNodeId;
+    }
+    saveToStorage();
+    renderNodeList();
+}
+
+function switchMode(mode) {
+    document.getElementById('editorTab').classList.toggle('active', mode === 'editor');
+    document.getElementById('playerTab').classList.toggle('active', mode === 'player');
+    
+    const topActions = document.getElementById('topActions');
+    if (mode === 'editor') {
+        document.getElementById('editorMode').style.display = 'flex';
+        document.getElementById('playerMode').style.display = 'none';
+        topActions.classList.remove('hidden');
+    } else {
+        document.getElementById('editorMode').style.display = 'none';
+        document.getElementById('playerMode').style.display = 'block';
+        topActions.classList.add('hidden');
+        
+        loadedPlayStory = null;
+        document.getElementById('playerMode').innerHTML = `
+            <div class="empty-state">
+                <div class="empty-state-icon">📱</div>
+                <h2>Load a Story to Play</h2>
+                <p>Import a story JSON file to begin playing</p>
+                <button class="btn btn-primary load-story-btn" onclick="loadStoryForPlay()">Load Story JSON</button>
+            </div>
+        `;
+    }
+}
+
+// ==========================================
+// PLAYER MODE - CONVERSATIONS MENU SYSTEM
+// ==========================================
+
+function loadStoryForPlay() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const data = JSON.parse(event.target.result);
+                if (data.nodes && data.characters) {
+                    if (!data.splash) {
+                        data.splash = { title: '', description: '', photo: '', backgroundImage: '' };
+                    }
+                    Object.values(data.characters).forEach(char => {
+                        if (!char.backgroundImage) char.backgroundImage = '';
+                    });
+                    Object.values(data.nodes).forEach(node => {
+                        if (!node.voidBackground) node.voidBackground = '';
+                    });
+                    loadedPlayStory = data;
+                    showSplashScreen();
+                } else {
+                    alert('Invalid story file format');
+                }
+            } catch (err) {
+                alert('Error loading file: ' + err.message);
+            }
+        };
+        reader.readAsText(file);
+    };
+    input.click();
+}
+
+function showSplashScreen() {
+    const splash = loadedPlayStory.splash || {};
+    const bgStyle = splash.backgroundImage ? `background-image: url('${splash.backgroundImage}');` : '';
+    
+    document.getElementById('playerMode').innerHTML = `
+        <div class="splash-screen" style="${bgStyle}">
+            <div class="splash-content">
+                <div class="splash-photo">
+                    ${splash.photo ? `<img src="${splash.photo}" onerror="this.style.display='none'; this.parentElement.textContent='📖'">` : '📖'}
+                </div>
+                <h1 class="splash-title">${escapeHtml(splash.title || 'Untitled Story')}</h1>
+                <p class="splash-description">${escapeHtml(splash.description || 'An interactive story')}</p>
+                <button class="splash-start-btn" onclick="startGame()">Start Story</button>
+            </div>
+        </div>
+    `;
+}
+
+function startGame() {
+    if (!loadedPlayStory.startNodeId || !loadedPlayStory.nodes[loadedPlayStory.startNodeId]) {
+        alert('No start node defined in story');
+        return;
+    }
+    
+    conversationState = {
+        currentNodeId: null,
+        messageQueue: [],
+        currentMessageIndex: 0,
+        isTyping: false,
+        waitingForUser: false,
+        variables: { ...loadedPlayStory.variables },
+        unlockedNodes: new Set([loadedPlayStory.startNodeId]),
+        completedNodes: new Set(),
+        currentParticipantId: null,
+        participantHistory: {},
+        activeParticipantNodes: {},
+        pendingChoiceNode: null,
+        currentVoidBackground: null,
+        currentChatBackground: null,
+        delayEnabled: true
+    };
+    
+    showConversationsMenu();
+}
+
+function showConversationsMenu() {
+    const playerContainer = document.getElementById('playerMode');
+    playerContainer.style.backgroundImage = conversationState.currentVoidBackground ? 
+        `url('${conversationState.currentVoidBackground}')` : '';
+    
+    let menuHtml = `
+        <div class="conversations-menu">
+            <div class="menu-header">
+                <div class="menu-title">Messages</div>
+                <div class="menu-subtitle">${escapeHtml(loadedPlayStory.splash.title || 'Story')}</div>
+            </div>
+            <div class="conversations-list">
+    `;
+    
+    const unlockedNodes = Array.from(conversationState.unlockedNodes);
+    
+    if (unlockedNodes.length === 0) {
+        menuHtml += `
+            <div class="empty-state" style="padding: 40px 20px;">
+                <div class="empty-state-icon">📭</div>
+                <p>No conversations available</p>
+            </div>
+        `;
+    } else {
+        const participantConversations = {};
+        
+        unlockedNodes.forEach(nodeId => {
+            const node = loadedPlayStory.nodes[nodeId];
+            if (!node) return;
+            
+            const participantId = node.participantId;
+            if (!participantConversations[participantId]) {
+                participantConversations[participantId] = [];
+            }
+            participantConversations[participantId].push(nodeId);
+        });
+        
+        const sortedParticipants = Object.entries(participantConversations).sort((a, b) => {
+            const aHasActive = a[1].some(id => !conversationState.completedNodes.has(id));
+            const bHasActive = b[1].some(id => !conversationState.completedNodes.has(id));
+            if (aHasActive === bHasActive) return 0;
+            return aHasActive ? -1 : 1;
+        });
+        
+        sortedParticipants.forEach(([participantId, nodeIds]) => {
+            const participant = loadedPlayStory.characters[participantId];
+            const hasActive = nodeIds.some(id => !conversationState.completedNodes.has(id));
+            const isActive = conversationState.activeParticipantNodes[participantId] && 
+                           !conversationState.completedNodes.has(conversationState.activeParticipantNodes[participantId]);
+            
+            let previewText = 'New message';
+            if (!hasActive) {
+                previewText = 'Conversation completed';
+            }
+            
+            menuHtml += `
+                <div class="conversation-item ${isActive ? 'active' : ''} ${!hasActive ? 'locked' : ''}" 
+                     onclick="${hasActive ? `selectConversation('${participantId}')` : ''}">
+                    <div class="conversation-avatar">
+                        ${participant?.avatar ? `<img src="${participant.avatar}" onerror="this.style.display='none'; this.parentElement.textContent='👤'">` : '👤'}
+                    </div>
+                    <div class="conversation-info">
+                        <div class="conversation-name">${escapeHtml(participant?.name || 'Unknown')}</div>
+                        <div class="conversation-preview">${escapeHtml(previewText)}</div>
+                    </div>
+                    <div class="conversation-status ${hasActive ? 'new' : 'completed'}">
+                        ${hasActive ? 'New' : '✓ Done'}
+                    </div>
+                </div>
+            `;
+        });
+    }
+    
+    menuHtml += `
+            </div>
+        </div>
+    `;
+    
+    playerContainer.innerHTML = menuHtml;
+}
+
+function selectConversation(participantId) {
+    let nodeId = null;
+    
+    if (conversationState.pendingChoiceNode) {
+        const pendingNode = loadedPlayStory.nodes[conversationState.pendingChoiceNode];
+        if (pendingNode && pendingNode.participantId === participantId) {
+            nodeId = conversationState.pendingChoiceNode;
+            conversationState.pendingChoiceNode = null;
+        }
+    }
+    
+    if (!nodeId) {
+        const availableNodes = Array.from(conversationState.unlockedNodes).filter(nodeId => {
+            const node = loadedPlayStory.nodes[nodeId];
+            return node && node.participantId === participantId && !conversationState.completedNodes.has(nodeId);
+        });
+        
+        if (availableNodes.length === 0) return;
+        nodeId = availableNodes[0];
+    }
+    
+    loadConversation(nodeId);
+}
+
+function updateVoidBackground(nodeId) {
+    const node = loadedPlayStory.nodes[nodeId];
+    if (node && node.voidBackground) {
+        conversationState.currentVoidBackground = node.voidBackground;
+        const playerContainer = document.getElementById('playerMode');
+        if (playerContainer) {
+            playerContainer.style.backgroundImage = `url('${node.voidBackground}')`;
+        }
+    }
+}
+
+function updateChatBackground(imagePath) {
+    if (imagePath) {
+        conversationState.currentChatBackground = imagePath;
+        const phoneScreen = document.getElementById('phoneScreen');
+        if (phoneScreen) {
+            phoneScreen.style.backgroundImage = `url('${imagePath}')`;
+        }
+    }
+}
+
+function loadConversation(nodeId) {
+    const node = loadedPlayStory.nodes[nodeId];
+    
+    // Update void background
+    updateVoidBackground(nodeId);
+    
+    conversationState.activeParticipantNodes[node.participantId] = nodeId;
+    conversationState.currentParticipantId = node.participantId;
+    conversationState.currentNodeId = nodeId;
+    
+    conversationState.messageQueue = [];
+    conversationState.currentMessageIndex = 0;
+    conversationState.waitingForUser = false;
+    conversationState.pendingPlayerMessage = null;
+    
+    const participant = loadedPlayStory.characters[node.participantId];
+    // Use character's default background or current override
+    const charBg = conversationState.currentChatBackground || participant?.backgroundImage || '';
+    const charBgStyle = charBg ? `background-image: url('${charBg}');` : '';
+    
+    const playerContainer = document.getElementById('playerMode');
+    
+    const delayBtnClass = conversationState.delayEnabled ? '' : 'disabled';
+    
+    playerContainer.innerHTML = `
+        <div class="phone-frame">
+            <div class="phone-screen" id="phoneScreen" style="${charBgStyle}">
+                <div class="chat-header">
+                    <button class="back-btn" onclick="showConversationsMenu()">←</button>
+                    <div class="chat-header-avatar">
+                        ${participant?.avatar ? `<img src="${participant.avatar}" onerror="this.style.display='none'; this.parentElement.textContent='👤'">` : '👤'}
+                    </div>
+                    <div class="chat-header-info">
+                        <div class="chat-header-name">${escapeHtml(participant?.name || 'Unknown')}</div>
+                        <div class="chat-header-status" id="typingStatus">online</div>
+                    </div>
+                    <button class="delay-toggle ${delayBtnClass}" onclick="toggleDelay()" title="Toggle message delays">⌛</button>
+                </div>
+                <div class="chat-messages" id="chatMessages"></div>
+                <div class="chat-input-container" id="chatInputArea">
+                    <div class="choices-container" id="choicesContainer" style="display: none;"></div>
+                    <div class="text-input-wrapper" id="textInputWrapper">
+                        <div class="text-input" id="textInput" onclick="handleTextInputClick()">
+                            Tap to respond...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    const messagesDiv = document.getElementById('chatMessages');
+    if (conversationState.participantHistory[node.participantId]) {
+        messagesDiv.innerHTML = conversationState.participantHistory[node.participantId];
+        messagesDiv.querySelectorAll('.message-image').forEach(img => {
+            img.onclick = function() { openImageLightbox(this.src); };
+        });
+    }
+    
+    loadNodeMessages();
+    
+    setTimeout(showNextMessage, 500);
+}
+
+function toggleDelay() {
+    conversationState.delayEnabled = !conversationState.delayEnabled;
+    const btn = document.querySelector('.delay-toggle');
+    if (btn) {
+        btn.classList.toggle('disabled', !conversationState.delayEnabled);
+    }
+}
+
+function loadNodeMessages() {
+    const node = loadedPlayStory.nodes[conversationState.currentNodeId];
+    if (!node) return;
+    
+    conversationState.messageQueue = [];
+    conversationState.currentMessageIndex = 0;
+    
+    node.messages.forEach(msg => {
+        if (msg.condition && !checkCondition(msg.condition, conversationState.variables)) {
+            return;
+        }
+        conversationState.messageQueue.push(msg);
+    });
+    
+    node.variableSets.forEach(vs => {
+        conversationState.variables[vs.variable] = vs.value;
+    });
+}
+
+function calculateDelay(text) {
+    if (!conversationState.delayEnabled) return 100;
+    
+    const baseDelay = 2000;
+    const charDelay = 40;
+    const maxDelay = 8000;
+    
+    const textLength = text ? text.length : 0;
+    const calculatedDelay = baseDelay + (textLength * charDelay);
+    
+    return Math.min(calculatedDelay, maxDelay);
+}
+
+function showTypingIndicator() {
+    const messagesDiv = document.getElementById('chatMessages');
+    const existingTyping = document.getElementById('typingIndicator');
+    if (existingTyping) existingTyping.remove();
+    
+    const typingDiv = document.createElement('div');
+    typingDiv.id = 'typingIndicator';
+    typingDiv.className = 'typing-indicator';
+    typingDiv.innerHTML = `
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+    `;
+    
+    messagesDiv.appendChild(typingDiv);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    
+    document.getElementById('typingStatus').textContent = 'typing...';
+    conversationState.isTyping = true;
+}
+
+function hideTypingIndicator() {
+    const typingIndicator = document.getElementById('typingIndicator');
+    if (typingIndicator) {
+        typingIndicator.remove();
+    }
+    document.getElementById('typingStatus').textContent = 'online';
+    conversationState.isTyping = false;
+}
+
+function showNextMessage() {
+    if (conversationState.waitingForUser) return;
+    
+    const msg = conversationState.messageQueue[conversationState.currentMessageIndex];
+    
+    if (!msg) {
+        handleNodeEnding();
+        return;
+    }
+    
+    const isPlayer = msg.characterId === 'player';
+    const isSystem = msg.isSystem;
+    const isChatBgChange = msg.isChatBgChange;
+    
+    if (isChatBgChange) {
+        // Hidden chat background change - apply immediately without showing anything
+        updateChatBackground(msg.chatBgImage);
+        
+        conversationState.currentMessageIndex++;
+        
+        const delay = conversationState.delayEnabled ? 300 : 50;
+        setTimeout(showNextMessage, delay);
+    } else if (isSystem) {
+        const messagesDiv = document.getElementById('chatMessages');
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'chat-message system';
+        messageDiv.textContent = msg.text || '';
+        messagesDiv.appendChild(messageDiv);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        
+        const participantId = conversationState.currentParticipantId;
+        if (!conversationState.participantHistory[participantId]) {
+            conversationState.participantHistory[participantId] = '';
+        }
+        conversationState.participantHistory[participantId] += messageDiv.outerHTML;
+        
+        conversationState.currentMessageIndex++;
+        
+        const delay = conversationState.delayEnabled ? 500 : 50;
+        setTimeout(showNextMessage, delay);
+    } else if (isPlayer) {
+        preparePlayerMessage(msg);
+    } else {
+        showTypingIndicator();
+        
+        const delay = calculateDelay(msg.text);
+        
+        setTimeout(() => {
+            hideTypingIndicator();
+            
+            const messagesDiv = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'chat-message received';
+            
+            let content = '';
+            if (msg.image) {
+                content += `<img src="${msg.image}" class="message-image" onerror="this.style.display='none'" onclick="openImageLightbox('${msg.image}')">`;
+            }
+            if (msg.text) {
+                content += escapeHtml(msg.text);
+            }
+            
+            messageDiv.innerHTML = content;
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            
+            const participantId = conversationState.currentParticipantId;
+            if (!conversationState.participantHistory[participantId]) {
+                conversationState.participantHistory[participantId] = '';
+            }
+            conversationState.participantHistory[participantId] += messageDiv.outerHTML;
+            
+            conversationState.currentMessageIndex++;
+            
+            const nextDelay = conversationState.delayEnabled ? 1000 : 100;
+            setTimeout(showNextMessage, nextDelay);
+            
+        }, delay);
+    }
+}
+
+function preparePlayerMessage(msg) {
+    conversationState.waitingForUser = true;
+    conversationState.pendingPlayerMessage = msg;
+    
+    const textInput = document.getElementById('textInput');
+    
+    let previewText = msg.text || 'Tap to send...';
+    if (msg.image) {
+        previewText = '📷 ' + (msg.text || 'Photo');
+    }
+    
+    textInput.textContent = previewText;
+    textInput.classList.add('active');
+}
+
+function handleTextInputClick() {
+    if (!conversationState.waitingForUser || !conversationState.pendingPlayerMessage) return;
+    
+    const textInput = document.getElementById('textInput');
+    const msg = conversationState.pendingPlayerMessage;
+    
+    textInput.classList.add('sending');
+    setTimeout(() => {
+        textInput.classList.remove('sending');
+    }, 300);
+    
+    const messagesDiv = document.getElementById('chatMessages');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'chat-message sent';
+    
+    let content = '';
+    if (msg.image) {
+        content += `<img src="${msg.image}" class="message-image" onerror="this.style.display='none'" onclick="openImageLightbox('${msg.image}')">`;
+    }
+    if (msg.text) {
+        content += escapeHtml(msg.text);
+    }
+    
+    messageDiv.innerHTML = content;
+    messagesDiv.appendChild(messageDiv);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    
+    const participantId = conversationState.currentParticipantId;
+    if (!conversationState.participantHistory[participantId]) {
+        conversationState.participantHistory[participantId] = '';
+    }
+    conversationState.participantHistory[participantId] += messageDiv.outerHTML;
+    
+    textInput.textContent = 'Tap to respond...';
+    textInput.classList.remove('active');
+    
+    conversationState.waitingForUser = false;
+    conversationState.pendingPlayerMessage = null;
+    conversationState.currentMessageIndex++;
+    
+    const delay = conversationState.delayEnabled ? 500 : 50;
+    setTimeout(showNextMessage, delay);
+}
+
+function handleNodeEnding() {
+    const node = loadedPlayStory.nodes[conversationState.currentNodeId];
+    
+    conversationState.completedNodes.add(conversationState.currentNodeId);
+    
+    if (node.ending.type === 'choices') {
+        showChoices(node.ending.choices);
+    } else if (node.ending.type === 'redirect' && node.ending.target) {
+        conversationState.unlockedNodes.add(node.ending.target);
+        showReturnToMenu();
+    } else if (node.ending.type === 'end') {
+        showChatEnded();
+    }
+}
+
+function showChoices(choices) {
+    conversationState.waitingForUser = true;
+    
+    const choicesContainer = document.getElementById('choicesContainer');
+    const textInput = document.getElementById('textInput');
+    
+    choicesContainer.style.display = 'flex';
+    choicesContainer.innerHTML = choices.map((choice, idx) => `
+        <button class="choice-btn" onclick="selectChoice(${idx}, '${choice.nextNodeId}')">
+            ${escapeHtml(choice.text)}
+        </button>
+    `).join('');
+    
+    textInput.textContent = 'Select a choice above ↑';
+    textInput.classList.add('active');
+}
+
+function selectChoice(idx, nextNodeId) {
+    if (!conversationState.waitingForUser) return;
+    
+    const choices = loadedPlayStory.nodes[conversationState.currentNodeId].ending.choices;
+    const selectedText = choices[idx].text;
+    
+    const messagesDiv = document.getElementById('chatMessages');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'chat-message sent';
+    messageDiv.textContent = selectedText;
+    messagesDiv.appendChild(messageDiv);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    
+    const participantId = conversationState.currentParticipantId;
+    if (!conversationState.participantHistory[participantId]) {
+        conversationState.participantHistory[participantId] = '';
+    }
+    conversationState.participantHistory[participantId] += messageDiv.outerHTML;
+    
+    const choicesContainer = document.getElementById('choicesContainer');
+    choicesContainer.style.display = 'none';
+    choicesContainer.innerHTML = '';
+    
+    const textInput = document.getElementById('textInput');
+    textInput.textContent = 'Tap to respond...';
+    textInput.classList.remove('active');
+    
+    conversationState.waitingForUser = false;
+    
+    if (nextNodeId && loadedPlayStory.nodes[nextNodeId]) {
+        conversationState.unlockedNodes.add(nextNodeId);
+        
+        const nextNode = loadedPlayStory.nodes[nextNodeId];
+        
+        // Check if next node is with same participant
+        if (nextNode.participantId === conversationState.currentParticipantId) {
+            // Same NPC - continue conversation directly
+            // Update void background for new node
+            updateVoidBackground(nextNodeId);
+            
+            conversationState.currentNodeId = nextNodeId;
+            conversationState.messageQueue = [];
+            conversationState.currentMessageIndex = 0;
+            loadNodeMessages();
+            const delay = conversationState.delayEnabled ? 800 : 100;
+            setTimeout(showNextMessage, delay);
+        } else {
+            // Different NPC - go back to menu
+            conversationState.pendingChoiceNode = nextNodeId;
+            setTimeout(() => {
+                showConversationsMenu();
+            }, conversationState.delayEnabled ? 800 : 200);
+        }
+    } else {
+        setTimeout(() => {
+            showConversationsMenu();
+        }, conversationState.delayEnabled ? 800 : 200);
+    }
+}
+
+function showReturnToMenu() {
+    const messagesDiv = document.getElementById('chatMessages');
+    
+    const returnDiv = document.createElement('div');
+    returnDiv.style.cssText = 'text-align: center; padding: 30px 20px;';
+    returnDiv.innerHTML = `
+        <button class="btn btn-primary" onclick="showConversationsMenu()" style="padding: 12px 30px; font-size: 14px;">
+            ← Back to Messages
+        </button>
+    `;
+    messagesDiv.appendChild(returnDiv);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    
+    const textInput = document.getElementById('textInput');
+    if (textInput) {
+        textInput.textContent = 'Conversation ended';
+        textInput.style.opacity = '0.5';
+    }
+}
+
+function showChatEnded() {
+    const messagesDiv = document.getElementById('chatMessages');
+    
+    const endedDiv = document.createElement('div');
+    endedDiv.className = 'chat-ended';
+    endedDiv.textContent = '— Story Complete —';
+    messagesDiv.appendChild(endedDiv);
+    
+    const returnDiv = document.createElement('div');
+    returnDiv.style.cssText = 'text-align: center; padding: 20px;';
+    returnDiv.innerHTML = `
+        <button class="btn btn-primary" onclick="showConversationsMenu()" style="padding: 12px 30px; font-size: 14px;">
+            ← Back to Messages
+        </button>
+    `;
+    messagesDiv.appendChild(returnDiv);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    
+    const textInput = document.getElementById('textInput');
+    if (textInput) {
+        textInput.textContent = 'Story complete';
+        textInput.style.opacity = '0.5';
+    }
+}
+
+// Image Lightbox Functions
+function openImageLightbox(src) {
+    const lightbox = document.getElementById('imageLightbox');
+    const img = document.getElementById('lightboxImage');
+    img.src = src;
+    lightbox.classList.add('active');
+}
+
+function closeImageLightbox() {
+    const lightbox = document.getElementById('imageLightbox');
+    lightbox.classList.remove('active');
+    setTimeout(() => {
+        document.getElementById('lightboxImage').src = '';
+    }, 300);
+}
+
+function exportStory() {
+    const dataStr = JSON.stringify(storyData, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = (storyData.splash.title || 'story') + '.json';
+    a.click();
+    
+    URL.revokeObjectURL(url);
+}
+
+function importStory() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const data = JSON.parse(event.target.result);
+                if (data.nodes && data.characters) {
+                    if (!data.splash) {
+                        data.splash = { title: '', description: '', photo: '', backgroundImage: '' };
+                    }
+                    Object.values(data.characters).forEach(char => {
+                        if (!char.backgroundImage) char.backgroundImage = '';
+                    });
+                    Object.values(data.nodes).forEach(node => {
+                        if (!node.voidBackground) node.voidBackground = '';
+                    });
+                    storyData = data;
+                    currentNodeId = null;
+                    saveToStorage();
+                    init();
+                    alert('Story loaded successfully!');
+                } else {
+                    alert('Invalid story file format');
+                }
+            } catch (err) {
+                alert('Error loading file: ' + err.message);
+            }
+        };
+        reader.readAsText(file);
+    };
+    input.click();
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+init();
+</script>
+</body>
+</html>
