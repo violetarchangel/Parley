@@ -43,8 +43,7 @@ The story files (`*.js`) that are generated when you export a story are **your o
 
 - Sell your stories commercially
 - License them however you want (closed source, proprietary, CC0, whatever)
-- Delete them, modify them, distribute them — it's your work
-- Use them in paid games, books, or other projects, whatever.
+- Delete them, modify them, distribute them, whatever — it's your work
 
 The only requirement is that **the engine itself remains free and non-commercial**. You can't sell *this software* or wrap it in a paid service, but you can absolutely sell the stories you create *with* it.
 
