@@ -27,7 +27,7 @@ A complete story package can just be the story.js file. If you want to include m
 
 my-story/  
 ├── Parley.html (required)  
-├── yourstory.js (required)  
+├── yourstory.json (required)  
 ├── assets/  
 │ ├── wifeavatar.png  
 │ ├── backgrounds/  
