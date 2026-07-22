@@ -10,7 +10,9 @@ You are free to:
 Under the following terms:
   - Attribution: You must give appropriate credit, provide a link to the license,
     and indicate if changes were made.
-  - NonCommercial: You may not use the material for commercial purposes.
+  - NonCommercial: You may not use the material for commercial purposes or package it therein.
+
+This license does not apply to assets created with it.
 
 No additional restrictions: You may not apply legal terms or technological 
 measures that legally restrict others from doing anything the license permits.
