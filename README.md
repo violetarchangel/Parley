@@ -55,10 +55,11 @@ I have opened a subreddit, www.reddit.com/r/ParleyEngine/ for sharing stories an
 
 ## Contributing
 
-Because this was AI-generated, there's probably a lot of low-hanging fruit for improvement. Code cleanup, performance optimizations, bug fixes, documentation — it's all welcome. Don't assume "the author knows what they're doing." I most certainly don't. The AI definitely didn't.
-As a rule, I kinda hate AI. But in this case, it was a means to and end.
+Because this was AI-generated, there's probably a lot of low-hanging fruit for improvement. Please contribute to the issues list, and you are welcome to make pull requests for Code cleanup, performance optimizations, bug fixes, documentation etc.. Don't assume "the author knows what they're doing." I most certainly don't. The AI definitely didn't.  
 
-Pull requests are encouraged. Issues are encouraged. Forks are encouraged. Host your own version. Keep it alive.
+As a rule, I kind of loathe AI. But mostly with creativity. So in this case, it was a means to an end.
+
+**Pull requests are encouraged. Issues are encouraged. Forks are encouraged. Keep it alive.**
 
 ---
 
