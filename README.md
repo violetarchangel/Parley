@@ -39,7 +39,7 @@ The goal is ensuring this stays available and free. If I get hit by a bus, lose 
 
 The license above applies to this *engine* (the code that runs the stories), **not to the stories you write with it**.
 
-The story files (`*.js`) that are generated when you export a story are **your original content**. They are not covered by CC BY-NC or any other restriction from this project. You can:
+The story files (`*.json`) that are generated when you export a story are **your original content**. They are not covered by CC BY-NC or any other restriction from this project. You can:
 
 - Sell your stories commercially
 - License them however you want (closed source, proprietary, CC0, whatever)
